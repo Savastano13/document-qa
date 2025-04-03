@@ -23,3 +23,6 @@ A simple Streamlit app that answers questions about an uploaded document via Ope
    ```
 
 
+![Texte alternatif](https://i.imgur.com/eZ3iZzy.png)
+
+
