@@ -9,11 +9,17 @@ A simple Streamlit app that answers questions about an uploaded document via Ope
 1. Install the requirements
 
    ```
-   $ pip install -r requirements.txt
+   linux : pip install -r requirements.txt
+   windows: .venv\Scripts\python.exe -m pip install -r requirements.txt
    ```
+
+salut 
 
 2. Run the app
 
    ```
-   $ streamlit run streamlit_app.py
+   linux  : streamlit run streamlit_app.py
+   windows: streamlit run streamlit_app_modifier.py
    ```
+
+
