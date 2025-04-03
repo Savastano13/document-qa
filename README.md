@@ -13,7 +13,7 @@ A simple Streamlit app that answers questions about an uploaded document via Ope
    windows: .venv\Scripts\python.exe -m pip install -r requirements.txt
    ```
 
-salut 
+
 
 2. Run the app
 
@@ -22,4 +22,4 @@ salut
    windows: streamlit run streamlit_app_modifier.py
    ```
 
-
+Penser à mettre des commit régulièrement
