@@ -1,3 +1,9 @@
+# ignore flo
+.venv/
+###########
+
+
+
 .streamlit/secrets.toml
 
 # Byte-compiled / optimized / DLL files
