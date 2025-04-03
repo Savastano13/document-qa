@@ -22,4 +22,4 @@ A simple Streamlit app that answers questions about an uploaded document via Ope
    windows: streamlit run streamlit_app_modifier.py
    ```
 
-Penser à mettre des commit régulièrement
+
