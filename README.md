@@ -57,3 +57,8 @@ pip install -r requirements.txt
 ```bash
 streamlit run streamlit_app_modifier.py
 ```
+
+5. Accéder à la page web
+```bash
+http://localhost:8501/
+```
