@@ -9,10 +9,18 @@ import time
 import re
 import numpy as np
 
-# ================= CONFIGURATION DE LA CLÉ API =================
-# ATTENTION : Votre clé API est ici en clair, ce qui peut être risqué en production.
-# Il est recommandé d'utiliser des variables d'environnement ou un gestionnaire de secrets.
-OPENAI_API_KEY = "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"
+# Pour charger le fichier .env
+from dotenv import load_dotenv
+import os
+
+# 1) Charge les variables d'environnement depuis .env
+load_dotenv(".env")  # Par défaut, load_dotenv() cherche .env si vous ne mettez pas de paramètre
+
+# 2) Récupère la clé API depuis la variable d'environnement
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# 3) Configure la clé API d'OpenAI
+OpenAI.api_key = OPENAI_API_KEY
 
 # ================= CONFIGURATION TELEGRAM =================
 TELEGRAM_BOT_TOKEN = "7960645078:AAEzbayN_Kj1BV1rMRCg1LebvzDjPwFazYU"
@@ -77,8 +85,6 @@ def extract_transactions(text):
     return df if not df.empty else None
 
 # ================= TAB 1 : Conseiller Financier IA =================
-# ================= TAB 1 : Conseiller Financier IA =================
-# ================= TAB 1 : Conseiller Financier IA =================
 with tab1:
     st.title("💬 Votre Conseiller Financier IA")
     st.markdown(
@@ -93,15 +99,24 @@ with tab1:
         """
     )
 
-    # Téléversement du fichier et saisie de la question
+    # Téléversement du fichier
     uploaded_file = st.file_uploader("📎 Téléversez votre relevé bancaire", type=["txt", "pdf"])
-    question = st.text_area("Posez votre question :", placeholder="Ex : Où est-ce que je dépense trop ?")
 
-    # Initialisation de l'historique des échanges dans la session
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
+    # 🧠 Session state pour mémoriser l'historique
+    if "messages" not in st.session_state:
+        st.session_state.messages = [
+            {"role": "system", "content": "Tu es un conseiller financier expert. Analyse le relevé bancaire fourni et donne des conseils concrets pour optimiser les dépenses et économiser de l'argent. Fournis des recommandations pratiques et détaillées."}
+        ]
 
-    if uploaded_file and question:
+    # 💬 Affichage des messages précédents
+    for msg in st.session_state.messages[1:]:  # Ignorer le message "system"
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    # 🧑 Message utilisateur
+    user_input = st.chat_input("Posez votre question sur votre relevé bancaire...")
+
+    if user_input and uploaded_file:
         try:
             # Lecture du fichier en fonction de son type
             if uploaded_file.name.endswith(".txt"):
@@ -113,75 +128,33 @@ with tab1:
                 st.error("❌ Format non supporté.")
                 st.stop()
 
-            st.markdown("#### 🔎 Extraction facultative des transactions")
-            if st.button("Extraire les transactions du relevé"):
-                transactions_df = extract_transactions(document)
-                if transactions_df is not None:
-                    st.markdown("**Transactions détectées :**")
-                    st.dataframe(transactions_df)
-                else:
-                    st.info("Aucune transaction n'a pu être détectée automatiquement.")
+            # ➕ Ajouter message utilisateur
+            st.session_state.messages.append({"role": "user", "content": f"Relevé bancaire :\n{document}\n\nQuestion : {user_input}"})
+            with st.chat_message("user"):
+                st.markdown(user_input)
 
-            st.markdown("#### 📢 Lancement de l'analyse du relevé bancaire")
-            if st.button("Lancer l'analyse du relevé"):
-                if mode_test:
-                    # Réponse simulée pour le mode test
-                    fake_response = (
-                        "Réponse simulée : Votre relevé montre des dépenses excessives en abonnements et frais de livraison. "
-                        "Il serait judicieux de revoir ces postes pour optimiser votre budget mensuel."
-                    )
-                    st.success(fake_response)
-                    st.session_state.chat_history.append({
-                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "user": question,
-                        "bot": fake_response
-                    })
-                    send_telegram_message(f"[TEST IA] {fake_response}")
-                else:
-                    # Construction du prompt pour l'IA avec instructions détaillées
-                    system_prompt = (
-                        "Tu es un conseiller financier expert. Analyse le relevé bancaire fourni et donne des conseils concrets pour "
-                        "optimiser les dépenses et économiser de l'argent. Fournis des recommandations pratiques et détaillées."
-                    )
-                    messages = [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Relevé bancaire :\n{document}\n\nQuestion : {question}"}
-                    ]
-                    with st.spinner("💬 L'IA analyse votre relevé..."):
-                        response = client_openai.chat.completions.create(
-                            model="gpt-4",
-                            messages=messages,
-                            stream=True,
-                        )
-                        full_response = ""
-                        placeholder = st.empty()
-                        for part in response:
-                            if 'choices' in part and len(part['choices']) > 0:
-                                content = part['choices'][0].get('delta', {}).get('content', '')
-                                full_response += content
-                                placeholder.markdown(full_response)
+            # 🤖 Appel OpenAI
+            with st.spinner("💬 L'IA analyse votre relevé..."):
+                response = client_openai.chat.completions.create(
+                    model="gpt-4",
+                    messages=st.session_state.messages,
+                    temperature=0.7,
+                )
+                ai_reply = response.choices[0].message.content  # Accéder correctement à l'attribut content
+                st.session_state.messages.append({"role": "assistant", "content": ai_reply})
+                with st.chat_message("assistant"):
+                    st.markdown(ai_reply)
 
-                        # Ajouter la réponse complète à l'historique
-                        st.session_state.chat_history.append({
-                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            "user": question,
-                            "bot": full_response
-                        })
-                        send_telegram_message(f"📩 Résultat IA :\n{full_response[:400]}...")
         except Exception as e:
             st.error(f"❌ Erreur lors du traitement : {e}")
 
     # Affichage de l'historique des échanges
-    if st.session_state.chat_history:
+    if st.session_state.messages:
         st.markdown("### Historique des échanges")
-        history_df = pd.DataFrame(st.session_state.chat_history)
+        history_df = pd.DataFrame(st.session_state.messages[1:])  # Ignorer le message "system"
         st.dataframe(history_df)
         csv_history = history_df.to_csv(index=False).encode("utf-8")
         st.download_button("Télécharger l'historique", data=csv_history, file_name="historique_chat.csv", mime="text/csv")
-        for exchange in st.session_state.chat_history:
-            st.markdown(f"**[{exchange['timestamp']}] Vous :** {exchange['user']}")
-            st.markdown(f"**[{exchange['timestamp']}] IA :** {exchange['bot']}")
-
 
 
 # ================= TAB 2 : Bot de Trading BTC/USDT =================
@@ -335,8 +308,6 @@ with tab2:
         )
 
 # ================= TAB 3 : Analyse de Portefeuille =================
-# ================= TAB 3 : Analyse de Portefeuille =================
-# ================= TAB 3 : Analyse de Portefeuille =================
 with tab3:
     st.title("📊 Analyse de Portefeuille - Optimisez vos Investissements")
     st.markdown(
@@ -352,7 +323,20 @@ with tab3:
         - Simulation de scénarios de marché.
         """
     )
+
+    # Téléversement du fichier CSV
     uploaded_portfolio = st.file_uploader("Téléversez votre portefeuille (CSV: Asset, Quantity, Price)", type=["csv"])
+
+    # 🧠 Session state pour mémoriser l'historique
+    if "portfolio_messages" not in st.session_state:
+        st.session_state.portfolio_messages = [
+            {"role": "system", "content": "Tu es un expert en gestion de portefeuille et en finances personnelles. Analyse le portefeuille fourni et propose des recommandations pour optimiser la diversification, réduire le risque et améliorer la performance."}
+        ]
+
+    # 💬 Affichage des messages précédents
+    for msg in st.session_state.portfolio_messages[1:]:  # Ignorer le message "system"
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
     if uploaded_portfolio is not None:
         try:
@@ -410,31 +394,22 @@ with tab3:
             st.success(fake_response)
             send_telegram_message(f"[TEST Portefeuille] {fake_response}")
         else:
-            system_prompt = (
-                "Tu es un expert en gestion de portefeuille et en finances personnelles. "
-                "Analyse le portefeuille fourni et propose des recommandations pour optimiser la diversification, réduire le risque et améliorer la performance."
-            )
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Voici mon portefeuille au format CSV :\n{portfolio_summary}\n\nQuestion : {portfolio_question}"}
-            ]
-            try:
-                with st.spinner("💬 L'IA analyse votre portefeuille..."):
-                    response = client_openai.chat.completions.create(
-                        model="gpt-4",
-                        messages=messages,
-                        stream=True,
-                    )
-                    portfolio_response = ""
-                    placeholder_portfolio = st.empty()
-                    for part in response:
-                        if 'choices' in part and len(part['choices']) > 0:
-                            content = part['choices'][0].get('delta', {}).get('content', '')
-                            portfolio_response += content
-                            placeholder_portfolio.markdown(portfolio_response)
-                    send_telegram_message(f"📩 Analyse Portefeuille IA :\n{portfolio_response[:400]}...")
-            except Exception as e:
-                st.error(f"Erreur lors de l'appel à l'API OpenAI : {e}")
+            # ➕ Ajouter message utilisateur
+            st.session_state.portfolio_messages.append({"role": "user", "content": f"Voici mon portefeuille au format CSV :\n{portfolio_summary}\n\nQuestion : {portfolio_question}"})
+            with st.chat_message("user"):
+                st.markdown(portfolio_question)
+
+            # 🤖 Appel OpenAI
+            with st.spinner("💬 L'IA analyse votre portefeuille..."):
+                response = client_openai.chat.completions.create(
+                    model="gpt-4",
+                    messages=st.session_state.portfolio_messages,
+                    temperature=0.7,
+                )
+                ai_reply = response.choices[0].message.content
+                st.session_state.portfolio_messages.append({"role": "assistant", "content": ai_reply})
+                with st.chat_message("assistant"):
+                    st.markdown(ai_reply)
 
     # Comparaison avec un indice de référence
     st.subheader("Comparaison avec un Indice de Référence")
