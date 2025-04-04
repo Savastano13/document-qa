@@ -199,7 +199,7 @@ with tab2:
            - **Seuil RSI :** Ajustez le niveau critique du RSI (par défaut 50).
            - **Décalage MACD :** Définissez un décalage pour ajuster la sensibilité du MACD.
         3. **Lancement de l'analyse :** Cliquez sur le bouton pour récupérer les données, calculer les indicateurs (EMA, RSI, MACD, Bollinger Bands) et afficher des graphiques détaillés.
-        4. **Notification :** En cas de signal BUY ou SELL, une notification est envoyée via Telegram.
+        4. **Notification :** En cas de signal BUY ou SELL ok, une notification est envoyée via Telegram.
         """
     )
 
