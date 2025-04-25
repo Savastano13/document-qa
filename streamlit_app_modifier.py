@@ -8,6 +8,8 @@ from openai import OpenAI
 import time
 import re
 import numpy as np
+import seaborn as sns
+
 
 # Pour charger le fichier .env
 from dotenv import load_dotenv
@@ -145,6 +147,16 @@ with tab1:
                 with st.chat_message("assistant"):
                     st.markdown(ai_reply)
 
+            # Extraction des transactions
+            st.markdown("#### 🔎 Extraction facultative des transactions")
+            if st.button("Extraire les transactions du relevé"):
+                transactions_df = extract_transactions(document)
+                if transactions_df is not None:
+                    st.markdown("**Transactions détectées :**")
+                    st.dataframe(transactions_df)
+                else:
+                    st.info("Aucune transaction n'a pu être détectée automatiquement.")
+
         except Exception as e:
             st.error(f"❌ Erreur lors du traitement : {e}")
 
@@ -155,8 +167,6 @@ with tab1:
         st.dataframe(history_df)
         csv_history = history_df.to_csv(index=False).encode("utf-8")
         st.download_button("Télécharger l'historique", data=csv_history, file_name="historique_chat.csv", mime="text/csv")
-
-
 # ================= TAB 2 : Bot de Trading BTC/USDT =================
 with tab2:
     st.title("📈 Bot de Trading BTC/USDT")
@@ -308,6 +318,9 @@ with tab2:
         )
 
 # ================= TAB 3 : Analyse de Portefeuille =================
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 with tab3:
     st.title("📊 Analyse de Portefeuille - Optimisez vos Investissements")
     st.markdown(
@@ -419,7 +432,6 @@ with tab3:
     # Simulation de scénarios de marché
     st.subheader("Simulation de Scénarios de Marché")
     st.write("Simulez différents scénarios de marché pour évaluer l'impact sur votre portefeuille.")
-    # Note : Pour une simulation complète, des données historiques et des modèles de prévision sont nécessaires.
 
     # Graphique circulaire de répartition des actifs
     st.subheader("Répartition des Actifs")
@@ -436,9 +448,30 @@ with tab3:
     ax_bar.set_ylabel("Valeur ($)")
     st.pyplot(fig_bar)
 
+    # Ajout d'une analyse de corrélation entre les actifs
+    st.subheader("Analyse de Corrélation entre les Actifs")
+    correlation_matrix = portfolio_df[["Quantity", "Price", "Value"]].corr()
+    fig_corr, ax_corr = plt.subplots(figsize=(8, 6))
+    sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm", ax=ax_corr)
+    st.pyplot(fig_corr)
+
+    # Ajout d'une fonctionnalité de simulation de scénarios de marché
+    st.subheader("Simulation de Scénarios de Marché")
+    scenario_change = st.slider("Pourcentage de changement hypothétique du marché (%)", -50, 50, 0, key="scenario_change_1")
+    if scenario_change != 0:
+        portfolio_df["Simulated Value"] = portfolio_df["Value"] * (1 + scenario_change / 100)
+        st.write(f"**Valeur totale simulée après un changement de {scenario_change}% :** ${portfolio_df['Simulated Value'].sum():,.2f}")
+        st.dataframe(portfolio_df[["Asset", "Value", "Simulated Value"]])
+
+    # Ajout d'une recommandation basée sur la volatilité
+    st.subheader("Recommandation Basée sur la Volatilité")
+    if volatility > 1000:  # Exemple de seuil
+        st.write("Considérant la volatilité élevée, il pourrait être judicieux de diversifier davantage votre portefeuille.")
+    else:
+        st.write("Votre portefeuille semble bien diversifié en termes de volatilité.")
+
     # Option de téléchargement du rapport complet
     csv_report = portfolio_df.to_csv(index=False).encode('utf-8')
     st.download_button("Télécharger le rapport CSV", data=csv_report, file_name="rapport_portefeuille.csv", mime="text/csv")
-
 
 # ================= FIN DU CODE =================
